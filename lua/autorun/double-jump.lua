@@ -323,9 +323,7 @@ if SERVER then
             end
 
             mv:SetVelocity( mv:GetVelocity() + LocalToWorld( vec3_temp, angle_zero, vector_origin, mv:GetMoveAngles() ) )
-           -- print( "old", player_jump_count, "sets", player_jump_count - 1 )
             ply:SetDoubleJumpCount( player_jump_count - 1 )
-           -- print( "new", player_jump_count )
             ply:EmitSound(
                 math_random( 0, 1 ) == 0 and "vehicles/airboat/pontoon_impact_hard1.wav" or "vehicles/airboat/pontoon_impact_hard2.wav",
                 75, math_floor( Lerp( player_jump_count / double_jump_limits[ ply ], 75, 125 ) ),
