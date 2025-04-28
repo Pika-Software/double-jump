@@ -4,11 +4,7 @@ local math_max = math.max
 
 local AddonName = "Double/Long Jump's"
 
-local default_double_jump_count = CreateConVar( "sv_double_jump_count", "4", bit.bor( FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED ), "The default limit of the double jumps.", 0x0, 0x4000 ):GetInt()
-
-cvars.AddChangeCallback( "sv_double_jump_count", function( _, __, new_value )
-    default_double_jump_count = tonumber( new_value, 10 ) or 0
-end, AddonName )
+local sv_double_jump_count = CreateConVar( "sv_double_jump_count", "4", { FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED }, "The default limit of the double jumps.", 0x0, 0x4000 )
 
 ---@class Entity
 local ENTITY = FindMetaTable( "Entity" )
@@ -53,8 +49,7 @@ if SERVER then
     ---
     --- Sets time of occurrence of a double jump charge.
     ---
-    ---@param ply Player
-    ---@param count time
+    ---@param next_charge_time number
     function PLAYER:SetDoubleJumpChargingTime( next_charge_time )
         next_charge_time = math_max( 0, next_charge_time )
         next_double_jump_charge[ self ] = next_charge_time
@@ -67,7 +62,7 @@ if SERVER then
     setmetatable( double_jump_limits, {
         __index = function( _, ply )
             ---@cast ply Player
-            return ENTITY_GetNW2Var( ply, "m_iDoubleJumpLimit", default_double_jump_count )
+            return ENTITY_GetNW2Var( ply, "m_iDoubleJumpLimit", sv_double_jump_count:GetFloat() )
         end
     } )
 
@@ -377,7 +372,7 @@ end
 ---@param ply Player
 ---@return number
 local function getDoubleJumpLimit( ply )
-    return ENTITY_GetNW2Var( ply, "m_iDoubleJumpLimit", default_double_jump_count )
+    return ENTITY_GetNW2Var( ply, "m_iDoubleJumpLimit", sv_double_jump_count:GetFloat() )
 end
 
 PLAYER.GetDoubleJumpLimit = getDoubleJumpLimit
@@ -399,17 +394,19 @@ PLAYER.GetDoubleJumpCount = getDoubleJumpCount
 --- Returns the time of occurrence of a double jump charge
 ---
 ---@return number
-function getDoubleJumpChargingTime( ply )
+local function getDoubleJumpChargingTime( ply )
     return ENTITY_GetNW2Var( ply, "m_iDoubleJumpChargingTime", 0 )
 end
 
 PLAYER.GetDoubleJumpChargingTime = getDoubleJumpChargingTime
 
 local double_jump_count = 0
-local double_jump_limit = default_double_jump_count
+local double_jump_limit = sv_double_jump_count:GetFloat()
 
 local double_jump_charging_time = 0
 local double_jump_start_charging_time = 0
+
+local local_player
 
 local function initPlayer()
     local_player = LocalPlayer()
