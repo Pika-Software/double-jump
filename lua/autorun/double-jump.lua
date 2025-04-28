@@ -222,12 +222,6 @@ if SERVER then
 
         local vec3_temp = Vector( 0, 0, 0 )
 
-        local jump_sounds = {
-            "vehicles/airboat/pontoon_impact_hard1.wav",
-            "vehicles/airboat/pontoon_impact_hard2.wav",
-            "ambient/machines/steam_release_1.wav"
-        }
-
         hook.Add( "Move", AddonName, function( ply, mv )
             ---@cast ply Player
             ---@cast mv CMoveData
@@ -310,7 +304,9 @@ if SERVER then
             end
 
             mv:SetVelocity( mv:GetVelocity() + LocalToWorld( vec3_temp, angle_zero, vector_origin, mv:GetMoveAngles() ) )
-            ply:EmitSound( jump_sounds[ math_random( 1, 3 ) ], 75, math_floor( Lerp( player_jump_count / getDoubleJumpLimit( ply ), 75, 175 ) ), 1, 6, 0, 1 )
+            ply:EmitSound(
+                math_random( 0, 1 ) == 0 and "vehicles/airboat/pontoon_impact_hard1.wav" or "vehicles/airboat/pontoon_impact_hard2.wav",
+                75, math_floor( Lerp( player_jump_count / getDoubleJumpLimit( ply ), 75, 175 ) ), 1, 6, 0, 1 )
             setDoubleJumpCount( ply, player_jump_count - 1 )
         end )
 
