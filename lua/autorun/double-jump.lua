@@ -44,13 +44,10 @@ if SERVER then
     ---
     --- Returns the time of occurrence of a double jump charge.
     ---
-    ---@param ply Player
     ---@return number
-    function getDoubleJumpChargingTime( ply )
-        return next_double_jump_charge[ ply ]
+    function PLAYER:GetDoubleJumpChargingTime()
+        return next_double_jump_charge[ self ]
     end
-
-    PLAYER.GetDoubleJumpChargingTime = getDoubleJumpChargingTime
 
     --- [SERVER]
     ---
@@ -78,13 +75,10 @@ if SERVER then
     ---
     --- Returns the limit of the double jumps.
     ---
-    ---@param ply Player
     ---@return number
-    local function getDoubleJumpLimit( ply )
-        return double_jump_limits[ ply ]
+    function PLAYER:GetDoubleJumpLimit()
+        return double_jump_limits[ self ]
     end
-
-    PLAYER.GetDoubleJumpLimit = getDoubleJumpLimit
 
     --- [SERVER]
     ---
@@ -111,13 +105,10 @@ if SERVER then
     ---
     --- Returns the count of the double jumps.
     ---
-    ---@param ply Player
     ---@return number
-    local function getDoubleJumpCount( ply )
-        return double_jump_counts[ ply ]
+    function PLAYER:GetDoubleJumpCount()
+        return double_jump_counts[ self ]
     end
-
-    PLAYER.GetDoubleJumpCount = getDoubleJumpCount
 
     --- [SERVER]
     ---
@@ -125,18 +116,18 @@ if SERVER then
     ---
     ---@param new_count number
     function PLAYER:SetDoubleJumpCount( new_count )
-        new_count = math_max( 0, math_min( new_count, getDoubleJumpLimit( self ) ) )
+        local old_count = double_jump_counts[ self ]
+        new_count = math_max( 0, new_count )
 
-        local old_count = getDoubleJumpCount( self )
         double_jump_counts[ self ] = new_count
         ENTITY_SetNW2Var( self, "m_iDoubleJumpCount", new_count )
 
         if old_count > new_count then
             local curtime = CurTime()
-            if getDoubleJumpChargingTime( self ) <= curtime then
+            if next_double_jump_charge[ self ] <= curtime then
                 self:SetDoubleJumpChargingTime( curtime + double_jump_charge_speed )
             end
-        elseif new_count == getDoubleJumpLimit( self ) then
+        elseif new_count == double_jump_limits[ self ] then
             self:SetDoubleJumpChargingTime( 0 )
         end
     end
@@ -283,7 +274,7 @@ if SERVER then
                 return -- already in double jump
             end
 
-            local player_jump_count = getDoubleJumpCount( ply )
+            local player_jump_count = double_jump_counts[ ply ]
             if player_jump_count == 0 then
                 ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 1, 6, 0, 1 )
                 return -- no more double jumps
@@ -332,11 +323,12 @@ if SERVER then
             end
 
             mv:SetVelocity( mv:GetVelocity() + LocalToWorld( vec3_temp, angle_zero, vector_origin, mv:GetMoveAngles() ) )
+           -- print( "old", player_jump_count, "sets", player_jump_count - 1 )
             ply:SetDoubleJumpCount( player_jump_count - 1 )
-
+           -- print( "new", player_jump_count )
             ply:EmitSound(
                 math_random( 0, 1 ) == 0 and "vehicles/airboat/pontoon_impact_hard1.wav" or "vehicles/airboat/pontoon_impact_hard2.wav",
-                75, math_floor( Lerp( player_jump_count / getDoubleJumpLimit( ply ), 75, 125 ) ),
+                75, math_floor( Lerp( player_jump_count / double_jump_limits[ ply ], 75, 125 ) ),
                 1, 6, 0, 1
             )
         end )
@@ -344,7 +336,7 @@ if SERVER then
     end
 
     hook.Add( "PlayerSpawn", AddonName, function( ply )
-        ply:SetDoubleJumpCount( getDoubleJumpLimit( ply ) )
+        ply:SetDoubleJumpCount( double_jump_limits[ ply ] )
     end )
 
     hook.Add( "PlayerDisconnected", AddonName, function( ply )
@@ -364,13 +356,11 @@ if SERVER then
         local curtime = CurTime()
 
         for _, ply in player_Iterator() do
-            local next_charge = getDoubleJumpChargingTime( ply )
-            if next_charge ~= 0 and next_charge < curtime then
+            local next_charge = next_double_jump_charge[ ply ]
+            if next_charge ~= 0 and next_charge <= curtime then
                 ply:SetDoubleJumpChargingTime( curtime + double_jump_charge_speed )
-
-                local player_jump_count = getDoubleJumpCount( ply )
-                local player_jump_limit = getDoubleJumpLimit( ply )
-
+                local player_jump_count = double_jump_counts[ ply ]
+                local player_jump_limit = double_jump_limits[ ply ]
                 if player_jump_count < player_jump_limit then
                     ply:EmitSound( "buttons/button24.wav", 75, math_floor( Lerp( player_jump_count / player_jump_limit, 25, 50 ) ), 1, 6, 0, 1 )
                     ply:SetDoubleJumpCount( player_jump_count + 1 )
