@@ -265,13 +265,13 @@ if SERVER then
             end
 
             if is_in_double_jump[ ply ] then
-                ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 1, 6, 0, 1 )
+                ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 0.5, 6, 0, 1 )
                 return -- already in double jump
             end
 
             local player_jump_count = double_jump_counts[ ply ]
             if player_jump_count == 0 then
-                ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 1, 6, 0, 1 )
+                ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 0.5, 6, 0, 1 )
                 return -- no more double jumps
             end
 
@@ -322,7 +322,7 @@ if SERVER then
             ply:EmitSound(
                 math_random( 0, 1 ) == 0 and "vehicles/airboat/pontoon_impact_hard1.wav" or "vehicles/airboat/pontoon_impact_hard2.wav",
                 75, math_floor( Lerp( player_jump_count / double_jump_limits[ ply ], 75, 125 ) ),
-                1, 6, 0, 1
+                0.5, 6, 0, 1
             )
         end )
 
@@ -349,13 +349,15 @@ if SERVER then
         local curtime = CurTime()
 
         for _, ply in player_Iterator() do
+            ---@cast ply Player
+
             local next_charge = next_double_jump_charge[ ply ]
             if next_charge ~= 0 and next_charge <= curtime then
                 ply:SetDoubleJumpChargingTime( curtime + double_jump_charge_speed )
                 local player_jump_count = double_jump_counts[ ply ]
                 local player_jump_limit = double_jump_limits[ ply ]
                 if player_jump_count < player_jump_limit then
-                    ply:EmitSound( "buttons/button24.wav", 75, math_floor( Lerp( player_jump_count / player_jump_limit, 25, 50 ) ), 1, 6, 0, 1 )
+                    ply:EmitSound( "buttons/button24.wav", 75, math_floor( Lerp( player_jump_count / player_jump_limit, 25, 50 ) ), 0.5, 6, 0, 1 )
                     ply:SetDoubleJumpCount( player_jump_count + 1 )
                 end
             end
