@@ -124,7 +124,7 @@ if SERVER then
 
         if old_count > new_count then
             local curtime = CurTime()
-            if next_double_jump_charge[ self ] <= curtime then
+            if next_double_jump_charge[ self ] <= curtime - 0.1 then
                 self:SetDoubleJumpChargingTime( curtime + double_jump_charge_speed )
             end
         elseif new_count == double_jump_limits[ self ] then
