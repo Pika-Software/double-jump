@@ -249,8 +249,8 @@ if SERVER then
             end
 
             if is_in_double_jump[ ply ] then
-                ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 1, 6, 0, 1 )
-                next_double_jump_charge[ ply ] = CurTime() + double_jump_charge_speed
+                -- ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 1, 6, 0, 1 )
+                -- next_double_jump_charge[ ply ] = CurTime() + double_jump_charge_speed
                 return -- already in double jump
             end
 
