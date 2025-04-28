@@ -27,6 +27,7 @@ local ENTITY_GetNW2Var = ENTITY.GetNW2Var
 if SERVER then
 
     local ENTITY_SetNW2Var = ENTITY.SetNW2Var
+    local math_random = math.random
     local CurTime = CurTime
 
     local double_jump_charge_speed = CreateConVar( "sv_double_jump_charge_speed", "3", { FCVAR_ARCHIVE, FCVAR_NOTIFY }, "The count of seconds to charge one double jump.", 0x0, 0x4000 ):GetFloat()
@@ -103,7 +104,7 @@ if SERVER then
         double_jump_counts[ ply ] = count
         ENTITY_SetNW2Var( ply, "m_iDoubleJumpCount", count )
 
-        if old_count == getDoubleJumpLimit( ply ) then
+        if old_count > count then
             next_double_jump_charge[ ply ] = CurTime() + double_jump_charge_speed
         end
     end
@@ -205,7 +206,6 @@ if SERVER then
 
         local angle_zero, vector_origin = angle_zero, vector_origin
         local LocalToWorld = LocalToWorld
-        local math_random = math.random
         local bit_band = bit.band
 
         local double_jump_window_min = CreateConVar( "sv_double_jump_window_min", "0.2", { FCVAR_ARCHIVE, FCVAR_NOTIFY }, "The window of the double jump in seconds.", 0x0, 0x4000 ):GetFloat()
@@ -232,7 +232,7 @@ if SERVER then
             ---@cast ply Player
             ---@cast mv CMoveData
 
-            if not ply:Alive() then
+            if not ply:Alive() or ply:GetMoveType() ~= 2 then
                 return
             end
 
@@ -246,16 +246,26 @@ if SERVER then
                 return -- on ground
             end
 
-            if is_in_double_jump[ ply ] then return end -- already in double jump
-
-            local player_double_jump_count = getDoubleJumpCount( ply )
-            if player_double_jump_count == 0 then return end
-
             local buttons = mv:GetButtons()
             if bit_band( mv:GetOldButtons(), 2 ) ~= 0 or bit_band( buttons, 2 ) == 0 then return end -- not jumping
 
             local time_in_air = CurTime() - ( last_on_ground_times[ ply ] or 0 )
-            if time_in_air < double_jump_window_min or time_in_air > double_jump_window_max then return end -- not in double jump window
+            if time_in_air < double_jump_window_min or time_in_air > double_jump_window_max then
+                return -- not in double jump window
+            end
+
+            if is_in_double_jump[ ply ] then
+                ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 1, 6, 0, 1 )
+                next_double_jump_charge[ ply ] = CurTime() + double_jump_charge_speed
+                return -- already in double jump
+            end
+
+            local player_jump_count = getDoubleJumpCount( ply )
+            if player_jump_count == 0 then
+                ply:EmitSound( "player/suit_denydevice.wav", 75, math_random( 75, 175 ), 1, 6, 0, 1 )
+                next_double_jump_charge[ ply ] = CurTime() + double_jump_charge_speed
+                return -- no more double jumps
+            end
 
             is_in_double_jump[ ply ] = true
 
@@ -300,11 +310,15 @@ if SERVER then
             end
 
             mv:SetVelocity( mv:GetVelocity() + LocalToWorld( vec3_temp, angle_zero, vector_origin, mv:GetMoveAngles() ) )
-            ply:EmitSound( jump_sounds[ math_random( 1, 3 ) ], 75, math_random( 75, 175 ), 1, 6, 0, 1 )
-            setDoubleJumpCount( ply, player_double_jump_count - 1 )
+            ply:EmitSound( jump_sounds[ math_random( 1, 3 ) ], 75, math_floor( Lerp( player_jump_count / getDoubleJumpLimit( ply ), 75, 175 ) ), 1, 6, 0, 1 )
+            setDoubleJumpCount( ply, player_jump_count - 1 )
         end )
 
     end
+
+    hook.Add( "PlayerSpawn", AddonName, function( ply )
+        setDoubleJumpCount( ply, getDoubleJumpLimit( ply ) )
+    end )
 
     hook.Add( "PlayerDisconnected", AddonName, function( ply )
         next_double_jump_charge[ ply ] = nil
@@ -316,23 +330,26 @@ if SERVER then
         long_jump_powers[ ply ] = nil
     end )
 
-    do
+    local player_Iterator = player.Iterator
+    local Lerp = Lerp
 
-        local player_Iterator = player.Iterator
+    hook.Add( "Tick", AddonName, function()
+        local curtime = CurTime()
 
-        hook.Add( "Tick", AddonName, function()
-            local curtime = CurTime()
+        for _, ply in player_Iterator() do
+            local next_charge = next_double_jump_charge[ ply ]
+            if next_charge == nil or next_charge < curtime then
+                next_double_jump_charge[ ply ] = curtime + double_jump_charge_speed
 
-            for _, ply in player_Iterator() do
-                local next_charge = next_double_jump_charge[ ply ]
-                if next_charge == nil or next_charge < curtime then
-                    next_double_jump_charge[ ply ] = curtime + double_jump_charge_speed
-                    setDoubleJumpCount( ply, getDoubleJumpCount( ply ) + 1 )
+                local player_jump_count = getDoubleJumpCount( ply )
+                local player_jump_limit = getDoubleJumpLimit( ply )
+                if player_jump_count < player_jump_limit then
+                    setDoubleJumpCount( ply, player_jump_count + 1 )
+                    ply:EmitSound( "buttons/button24.wav", 75, math_floor( Lerp( player_jump_count / player_jump_limit, 25, 50 ) ), 1, 6, 0, 1 )
                 end
             end
-        end )
-
-    end
+        end
+    end )
 
     return
 end
@@ -393,7 +410,8 @@ hook.Add( "HUDPaint", AddonName, function()
 
     draw_RoundedBox( 4, x, y, box_width, box_height, color1 )
 
-    local bar_limit = getDoubleJumpLimit( local_player )
+    local bar_count = getDoubleJumpCount( local_player )
+    local bar_limit = math_max( getDoubleJumpLimit( local_player ), bar_count )
 
     local spacing = math_floor( vmin )
 
@@ -410,10 +428,10 @@ hook.Add( "HUDPaint", AddonName, function()
         surface_DrawRect( bar_x, bar_y, temp_width, bar_height )
 
         surface_SetDrawColor( 255, 255, 50, 20 )
-        surface_DrawRect( bar_x, bar_y, temp_width * math_min( 1, math_max( 0, getDoubleJumpCount( local_player ) / bar_limit ) ), bar_height )
+        surface_DrawRect( bar_x, bar_y, temp_width * math_min( 1, math_max( 0, bar_count / bar_limit ) ), bar_height )
     else
         local bar_x = x + ( box_width - ( ( bar_width * bar_limit ) + ( spacing * ( bar_limit - 1 ) ) ) ) * 0.5
-        local bar_count = getDoubleJumpCount( local_player ) - 1
+        bar_count = bar_count - 1
 
         for i = 0, bar_limit - 1, 1 do
             if i <= bar_count then
