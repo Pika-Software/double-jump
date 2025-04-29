@@ -357,7 +357,7 @@ if SERVER then
                 local player_jump_count = double_jump_counts[ ply ]
                 local player_jump_limit = double_jump_limits[ ply ]
                 if player_jump_count < player_jump_limit then
-                    ply:EmitSound( "buttons/button24.wav", 75, math_floor( Lerp( player_jump_count / player_jump_limit, 25, 50 ) ), 0.5, 6, 0, 1 )
+                    ply:EmitSound( "buttons/button24.wav", 75, math_floor( Lerp( player_jump_count / player_jump_limit, 25, 50 ) ) + math_random( 10, 25 ), 0.5, 6, 0, 1 )
                     ply:SetDoubleJumpCount( player_jump_count + 1 )
                 end
             end
